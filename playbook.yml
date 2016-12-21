@@ -1,0 +1,15 @@
+---
+- hosts: localhost
+  connection: local
+  tasks:
+    - name: "Update Applicative CloudFormation Stack"
+      cloudformation:
+        stack_name: "cf-symlink-bugreport"
+        state:      "present"
+        region:     "eu-west-1"
+        template:   "cf-stack.yml"
+        template_parameters:
+          VpcId:    "FIXME"
+          KeyPair:  "FIXME"
+          SubnetId: "FIXME"
+          AZ:       "FIXME"
