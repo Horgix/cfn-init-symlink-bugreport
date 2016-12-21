@@ -72,5 +72,6 @@ Resources:
           files:
             "/home/ubuntu/demo_link":
               content: "/etc/issue"
+              mode:   " 120000"
               owner:  "ubuntu"
               group:  "ubuntu"
