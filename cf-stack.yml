@@ -1,0 +1,76 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: "cfn-init symlink bug report - minimal example stack" 
+
+Parameters:
+  VpcId:
+    Type: "String"
+  KeyPair:
+    Type: "String"
+  SubnetId:
+    Type: "String"
+  AZ:
+    Type: "String"
+
+
+Resources:
+  # Simple dumb security group to allow SSH connection to the instance
+  sgSshInboundInternal:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupDescription: "Security Group for SSH access to the instance"
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: "tcp"
+          FromPort:   '22'
+          ToPort:     '22'
+          CidrIp:     "10.0.0.0/8"
+      SecurityGroupEgress: []
+  # The instance for the demo itself
+  ec2Instance:
+    Type: "AWS::EC2::Instance"
+    Properties:
+      # Base Ubuntu Xenial image :
+      # ubuntu/images/hvm-ssd/ubuntu-xenial-16.04-amd64-server-20161115
+      ImageId:            "ami-07174474"
+      InstanceType:       "t2.micro"
+      KeyName:            !Ref KeyPair
+      SubnetId:           !Ref SubnetId
+      AvailabilityZone:   !Ref AZ
+      InstanceInitiatedShutdownBehavior: terminate
+      SecurityGroupIds:
+        - !Ref sgSshInboundInternal
+      UserData:
+        # Nothing special here, we only install cfn-* and run cfn-init
+        # From official guidelines for using cfn-init on Ubuntu instances
+        Fn::Base64:
+          Fn::Join:
+          - ''
+          - - "#!/bin/bash -xe\n"
+            - "apt-get update -y && apt-get install -y python-setuptools\n"
+            - "easy_install https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz"
+            - "\n"
+            - "# Install the files and packages from the metadata\n"
+            - "/usr/local/bin/cfn-init -v "
+            - "         --stack "
+            -           !Ref AWS::StackName
+            - "         --resource ec2Instance "
+            - "         --region "
+            -           !Ref AWS::Region
+            - "\n"
+            - "# Signal the status from cfn-init\n"
+            - "/usr/local/bin/cfn-signal -e $? "
+            - "         --stack "
+            -           !Ref AWS::StackName
+            - "         --resource ec2Instance "
+            - "         --region "
+            -           !Ref AWS::Region
+            - "\n"
+    Metadata:
+      AWS::CloudFormation::Init:
+        config:
+          files:
+            "/home/ubuntu/demo_link":
+              content: "/etc/issue"
+              owner:  "ubuntu"
+              group:  "ubuntu"
